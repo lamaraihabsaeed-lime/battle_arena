@@ -1,30 +1,28 @@
-// DatabaseManager.h - Database operations for scores
-
 #ifndef DATABASEMANAGER_H
 #define DATABASEMANAGER_H
 
-#include <QSqlDatabase>
-#include <QString>
-#include <QList>
 #include <string>
+#include <vector>
 
-struct Score {
-    std::string name;
+struct ScoreEntry {
+    std::string playerName;
     int score;
+    int level;
 };
 
 class DatabaseManager {
-private:
-    QSqlDatabase db;
-    QString dbPath;
-
 public:
-    DatabaseManager(const QString& path);
-    bool connect();
-    bool checkCredentials(const QString& username, const QString& password);
-    void saveProfile(const QString& username, int avatarId);
-    void saveResult(const std::string& name, int score);
-    QList<Score> getLeaderboard();
+    DatabaseManager();
+    ~DatabaseManager() = default;
+
+    // Score management
+    bool saveScore(const std::string& playerName, int score, int level);
+    std::vector<ScoreEntry> getTopScores(int limit = 10);
+    bool initializeDatabase();
+
+private:
+    // For demo purposes, we'll use in-memory storage
+    std::vector<ScoreEntry> scores;
 };
 
 #endif // DATABASEMANAGER_H

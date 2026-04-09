@@ -1,60 +1,48 @@
 // DatabaseManager.cpp - Database manager implementation
 
 #include "DatabaseManager.h"
-#include <QSqlQuery>
-#include <QSqlError>
-#include <QVariant>
+#include <algorithm>
 
-DatabaseManager::DatabaseManager(const QString& path) : dbPath(path) {}
+DatabaseManager::DatabaseManager() {
+    initializeDatabase();
+}
 
-bool DatabaseManager::connect() {
-    db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName(dbPath);
-    if (!db.open()) {
-        return false;
-    }
-    // Create tables if not exist
-    QSqlQuery query;
-    query.exec("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, avatarId INTEGER)");
-    query.exec("CREATE TABLE IF NOT EXISTS scores (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, score INTEGER)");
+bool DatabaseManager::initializeDatabase() {
+    // Initialize with empty scores vector
+    scores.clear();
     return true;
 }
 
-bool DatabaseManager::checkCredentials(const QString& username, const QString& password) {
-    QSqlQuery query;
-    query.prepare("SELECT * FROM users WHERE username = ? AND password = ?");
-    query.addBindValue(username);
-    query.addBindValue(password);
-    if (query.exec() && query.next()) {
-        return true;
+bool DatabaseManager::saveScore(const std::string& playerName, int score, int level) {
+    if (playerName.empty() || score < 0 || level < 1) {
+        return false;
     }
-    return false;
+
+    ScoreEntry entry;
+    entry.playerName = playerName;
+    entry.score = score;
+    entry.level = level;
+
+    scores.push_back(entry);
+    
+    // Sort scores in descending order
+    std::sort(scores.begin(), scores.end(), 
+        [](const ScoreEntry& a, const ScoreEntry& b) {
+            return a.score > b.score;
+        });
+
+    return true;
 }
 
-void DatabaseManager::saveProfile(const QString& username, int avatarId) {
-    QSqlQuery query;
-    query.prepare("INSERT OR REPLACE INTO users (username, avatarId) VALUES (?, ?)");
-    query.addBindValue(username);
-    query.addBindValue(avatarId);
-    query.exec();
-}
+std::vector<ScoreEntry> DatabaseManager::getTopScores(int limit) {
+    std::vector<ScoreEntry> result;
+    int count = 0;
 
-void DatabaseManager::saveResult(const std::string& name, int score) {
-    QSqlQuery query;
-    query.prepare("INSERT INTO scores (name, score) VALUES (?, ?)");
-    query.addBindValue(QString::fromStdString(name));
-    query.addBindValue(score);
-    query.exec();
-}
-
-QList<Score> DatabaseManager::getLeaderboard() {
-    QList<Score> leaderboard;
-    QSqlQuery query("SELECT name, score FROM scores ORDER BY score DESC LIMIT 10");
-    while (query.next()) {
-        Score s;
-        s.name = query.value(0).toString().toStdString();
-        s.score = query.value(1).toInt();
-        leaderboard.append(s);
+    for (const auto& entry : scores) {
+        if (count >= limit) break;
+        result.push_back(entry);
+        count++;
     }
-    return leaderboard;
+
+    return result;
 }
